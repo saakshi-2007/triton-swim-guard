@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Triton Swim-Guard</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0B3D42">
+<style>
+  @font-face {
+    font-family: 'Scoreboard';
+    src: local('Oswald');
+  }
+
+  :root {
+    --pool: #0B3D42;
+    --pool-deep: #082C30;
+    --alert: #E8483A;
+    --foam: #F4FBFC;
+    --tile: #3FB6C4;
+    --graphite: #142426;
+    --panel: #11363B;
+    --amber: #E8A23A;
+    --line-rope: rgba(244, 251, 252, 0.08);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    background: var(--pool);
+    color: var(--foam);
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body {
+    background-image:
+      repeating-linear-gradient(
+        to bottom,
+        transparent 0px,
+        transparent 78px,
+        var(--line-rope) 78px,
+        var(--line-rope) 80px
+      );
+  }
+
+  .app {
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100vh;
+    position: relative;
+    padding-bottom: 40px;
+  }
+
+  /* ---------- Scoreboard top bar ---------- */
+  .scoreboard {
+    background: var(--pool-deep);
+    border-bottom: 3px solid var(--tile);
+    padding: 18px 20px 14px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .lane-num {
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    color: var(--tile);
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+
+  .title {
+    font-family: 'Oswald', 'Arial Narrow', sans-serif;
+    font-weight: 700;
+    font-size: 30px;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--foam);
+    line-height: 1.05;
+    margin-top: 2px;
+  }
+
+  .title span { color: var(--tile); }
+
+  /* ---------- status row ---------- */
+  .status-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 14px;
+    padding: 10px 12px;
+    background: rgba(0,0,0,0.18);
+    border-radius: 6px;
+  }
+
+  .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--alert);
+    box-shadow: 0 0 0 0 rgba(232,72,58,0.6);
+    flex-shrink: 0;
+  }
+
+  .dot.connected {
+    background: #4BD68B;
+    animation: pulse 1.8s infinite;
+  }
+
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(75,214,139,0.5); }
+    70% { box-shadow: 0 0 0 8px rgba(75,214,139,0); }
+    100% { box-shadow: 0 0 0 0 rgba(75,214,139,0); }
+  }
+
+  .status-text {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  .status-sub {
+    font-size: 11.5px;
+    color: rgba(244,251,252,0.55);
+    margin-top: 1px;
+  }
+
+  /* ---------- kick readout ---------- */
+  .readout {
+    margin: 18px 20px 0;
+    background: var(--graphite);
+    border-radius: 10px;
+    padding: 18px 20px;
+    border: 1px solid rgba(63,182,196,0.25);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .readout::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--tile), transparent);
+  }
+
+  .readout-label {
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(244,251,252,0.5);
+    font-weight: 600;
+  }
+
+  .readout-value {
+    font-family: 'Oswald', 'Arial Narrow', sans-serif;
+    font-size: 56px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--foam);
+    line-height: 1;
+    margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .readout-value span {
+    font-size: 20px;
+    color: var(--tile);
+    font-weight: 500;
+    margin-left: 6px;
+  }
+
+  /* ---------- nav tiles ---------- */
+  .tiles {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 20px 20px 0;
+  }
+
+  .tile {
+    background: var(--panel);
+    border: 1px solid rgba(244,251,252,0.08);
+    border-radius: 10px;
+    padding: 18px 16px;
+    text-align: left;
+    cursor: pointer;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+    color: var(--foam);
+    font-family: inherit;
+  }
+
+  .tile:active { transform: scale(0.97); }
+  .tile:hover { border-color: var(--tile); }
+
+  .tile-icon { font-size: 22px; margin-bottom: 8px; display: block; }
+  .tile-label {
+    font-size: 14.5px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+  .tile-sub {
+    font-size: 11.5px;
+    color: rgba(244,251,252,0.5);
+    margin-top: 2px;
+  }
+
+  .tile.full { grid-column: 1 / -1; }
+
+  .connect-btn {
+    width: 100%;
+    background: var(--tile);
+    color: var(--pool-deep);
+    border: none;
+    border-radius: 10px;
+    padding: 16px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    cursor: pointer;
+    margin: 18px 20px 0;
+    width: calc(100% - 40px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: filter 0.15s ease;
+  }
+  .connect-btn:active { filter: brightness(0.9); }
+  .connect-btn.connected { background: #4BD68B; }
+
+  .sos-btn {
+    width: calc(100% - 40px);
+    margin: 14px 20px 0;
+    background: var(--alert);
+    color: var(--foam);
+    border: 2px solid rgba(244,251,252,0.25);
+    border-radius: 10px;
+    padding: 18px;
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: filter 0.15s ease, transform 0.1s ease;
+  }
+  .sos-btn:active { transform: scale(0.98); filter: brightness(0.92); }
+
+  /* ---------- screens ---------- */
+  .screen {
+    display: none;
+    padding: 20px;
+    animation: slideIn 0.22s ease;
+  }
+  .screen.active { display: block; }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .screen-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 22px;
+  }
+
+  .back-btn {
+    background: var(--panel);
+    border: 1px solid rgba(244,251,252,0.15);
+    color: var(--foam);
+    width: 38px; height: 38px;
+    border-radius: 8px;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .screen-title {
+    font-family: 'Oswald', 'Arial Narrow', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+  }
+
+  .metric-card {
+    background: var(--graphite);
+    border: 1px solid rgba(63,182,196,0.2);
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin-bottom: 14px;
+    position: relative;
+  }
+
+  .metric-card.warn { border-color: var(--amber); }
+  .metric-card.danger { border-color: var(--alert); }
+
+  .metric-label {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(244,251,252,0.5);
+    font-weight: 600;
+  }
+
+  .metric-value {
+    font-family: 'Oswald', 'Arial Narrow', sans-serif;
+    font-size: 34px;
+    font-weight: 600;
+    margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .metric-value.small { font-size: 22px; }
+
+  .metric-unit { font-size: 14px; color: var(--tile); margin-left: 4px; font-weight: 500; }
+
+  .pill {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-top: 8px;
+  }
+  .pill.ok { background: rgba(75,214,139,0.15); color: #4BD68B; }
+  .pill.warn { background: rgba(232,162,58,0.15); color: var(--amber); }
+  .pill.danger { background: rgba(232,72,58,0.18); color: var(--alert); }
+
+  /* SOS screen specific */
+  .sos-hero {
+    background: var(--alert);
+    border-radius: 12px;
+    padding: 28px 22px;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  .sos-hero-title {
+    font-family: 'Oswald', 'Arial Narrow', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .sos-hero-msg {
+    margin-top: 10px;
+    font-size: 14.5px;
+    line-height: 1.5;
+    color: rgba(244,251,252,0.92);
+  }
+
+  .call-coach-btn {
+    width: 100%;
+    background: var(--foam);
+    color: var(--pool-deep);
+    border: none;
+    border-radius: 10px;
+    padding: 18px;
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    cursor: pointer;
+    margin-bottom: 12px;
+  }
+
+  .sos-sent-note {
+    text-align: center;
+    font-size: 12.5px;
+    color: rgba(244,251,252,0.5);
+    margin-top: 10px;
+  }
+
+  /* footer note */
+  .footer-note {
+    text-align: center;
+    font-size: 11px;
+    color: rgba(244,251,252,0.35);
+    margin-top: 26px;
+    padding: 0 20px;
+    line-height: 1.5;
+  }
+
+  /* toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--graphite);
+    border: 1px solid var(--tile);
+    color: var(--foam);
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 13.5px;
+    font-weight: 600;
+    opacity: 0;
+    transition: all 0.25s ease;
+    z-index: 100;
+    max-width: 90%;
+    text-align: center;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .dot.connected { animation: none; }
+    .screen { animation: none; }
+  }
+
+  button:focus-visible, .tile:focus-visible {
+    outline: 2px solid var(--tile);
+    outline-offset: 2px;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ===================== HOME SCREEN ===================== -->
+  <div class="screen active" id="home">
+    <div class="scoreboard">
+      <div class="lane-num">LANE STATUS &middot; LIVE</div>
+      <div class="title">TRITON<br><span>SWIM-GUARD</span></div>
+
+      <div class="status-row">
+        <div class="dot" id="statusDot"></div>
+        <div>
+          <div class="status-text" id="statusText">Swimmer Status: Not Connected</div>
+          <div class="status-sub" id="statusSub">Connect the band to begin tracking</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="readout">
+      <div class="readout-label">Kick Count</div>
+      <div class="readout-value" id="kickCountHome">0<span>kicks</span></div>
+    </div>
+
+    <button class="connect-btn" id="connectBtn">🔵 Connect Band</button>
+
+    <div class="tiles">
+      <button class="tile" onclick="showScreen('performance')">
+        <span class="tile-icon">📈</span>
+        <div class="tile-label">Performance</div>
+        <div class="tile-sub">Speed &amp; pace tracking</div>
+      </button>
+      <button class="tile" onclick="showScreen('health')">
+        <span class="tile-icon">🩺</span>
+        <div class="tile-label">Health Monitor</div>
+        <div class="tile-sub">Muscle &amp; cramp risk</div>
+      </button>
+    </div>
+
+    <button class="sos-btn" onclick="showScreen('sos')">🆘 Emergency SOS</button>
+
+    <div class="footer-note">
+      Pair "TritonBand" in your device Bluetooth settings first, then tap Connect Band above.
+    </div>
+  </div>
+
+  <!-- ===================== PERFORMANCE SCREEN ===================== -->
+  <div class="screen" id="performance">
+    <div class="screen-header">
+      <button class="back-btn" onclick="showScreen('home')">←</button>
+      <div class="screen-title">Performance</div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-label">Kick Count</div>
+      <div class="metric-value" id="perfKick">0</div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-label">Swimming Speed</div>
+      <div class="metric-value" id="perfSpeed">0.0<span class="metric-unit">m/s</span></div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-label">Training Time</div>
+      <div class="metric-value" id="perfTime">00:00</div>
+    </div>
+  </div>
+
+  <!-- ===================== HEALTH SCREEN ===================== -->
+  <div class="screen" id="health">
+    <div class="screen-header">
+      <button class="back-btn" onclick="showScreen('home')">←</button>
+      <div class="screen-title">Health Monitor</div>
+    </div>
+
+    <div class="metric-card" id="muscleCard">
+      <div class="metric-label">Muscle Status</div>
+      <div class="metric-value small" id="muscleStatus">Normal</div>
+      <span class="pill ok" id="musclePill">Stable</span>
+    </div>
+
+    <div class="metric-card" id="moveCard">
+      <div class="metric-label">Movement Status</div>
+      <div class="metric-value small" id="moveStatus">Active</div>
+      <span class="pill ok" id="movePill">Normal Stroke</span>
+    </div>
+
+    <div class="metric-card" id="crampCard">
+      <div class="metric-label">Cramp Risk</div>
+      <div class="metric-value small" id="crampStatus">Low</div>
+      <span class="pill ok" id="crampPill">Safe</span>
+    </div>
+  </div>
+
+  <!-- ===================== SOS SCREEN ===================== -->
+  <div class="screen" id="sos">
+    <div class="screen-header">
+      <button class="back-btn" onclick="showScreen('home')">←</button>
+      <div class="screen-title">Emergency SOS</div>
+    </div>
+
+    <div class="sos-hero">
+      <div class="sos-hero-title">🚨 SOS Alert</div>
+      <div class="sos-hero-msg">Swimmer may be in danger. Notify the coach immediately and check the pool.</div>
+    </div>
+
+    <button class="call-coach-btn" id="callCoachBtn">📞 Call Coach</button>
+    <div class="sos-sent-note" id="sosNote">Coach number not set — tap to configure on first use.</div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ---------------- Navigation ----------------
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  function showToast(msg, duration = 2400) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.remove('show'), duration);
+  }
+
+  // ---------------- App State ----------------
+  const state = {
+    connected: false,
+    kickCount: 0,
+    speed: 0.0,
+    trainingStart: null,
+    muscleStatus: 'Normal',
+    moveStatus: 'Active',
+    crampRisk: 'Low'
+  };
+
+  let bleDevice = null;
+  let bleCharacteristic = null;
+
+  // Standard Nordic UART Service UUIDs - commonly used for ESP32 BLE serial.
+  // If your ESP32 firmware uses different UUIDs, change these two lines to match.
+  const UART_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+  const UART_TX_CHAR_UUID = '6e400003-b5a3-f393-e0a9-e50e24dcca9e'; // ESP32 -> phone (notify)
+
+  // ---------------- Bluetooth Connect ----------------
+  document.getElementById('connectBtn').addEventListener('click', connectBLE);
+
+  async function connectBLE() {
+    if (!navigator.bluetooth) {
+      showToast('Web Bluetooth not supported on this browser. Use Chrome on Android/desktop.', 4000);
+      return;
+    }
+
+    try {
+      bleDevice = await navigator.bluetooth.requestDevice({
+        filters: [{ namePrefix: 'Triton' }],
+        optionalServices: [UART_SERVICE_UUID]
+      });
+
+      showToast('Connecting to ' + bleDevice.name + '...');
+      bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
+
+      const server = await bleDevice.gatt.connect();
+      const service = await server.getPrimaryService(UART_SERVICE_UUID);
+      bleCharacteristic = await service.getCharacteristic(UART_TX_CHAR_UUID);
+
+      await bleCharacteristic.startNotifications();
+      bleCharacteristic.addEventListener('characteristicvaluechanged', handleIncomingData);
+
+      setConnected(true);
+      showToast('Band connected ✅');
+    } catch (err) {
+      console.error(err);
+      showToast('Connection failed: ' + err.message, 3500);
+      setConnected(false);
+    }
+  }
+
+  function onDisconnected() {
+    setConnected(false);
+    showToast('Band disconnected');
+  }
+
+  function setConnected(isConnected) {
+    state.connected = isConnected;
+    const dot = document.getElementById('statusDot');
+    const text = document.getElementById('statusText');
+    const sub = document.getElementById('statusSub');
+    const btn = document.getElementById('connectBtn');
+
+    if (isConnected) {
+      dot.classList.add('connected');
+      text.textContent = 'Swimmer Status: Connected';
+      sub.textContent = 'Receiving live data from band';
+      btn.textContent = '🟢 Band Connected';
+      btn.classList.add('connected');
+      state.trainingStart = state.trainingStart || Date.now();
+    } else {
+      dot.classList.remove('connected');
+      text.textContent = 'Swimmer Status: Not Connected';
+      sub.textContent = 'Connect the band to begin tracking';
+      btn.textContent = '🔵 Connect Band';
+      btn.classList.remove('connected');
+    }
+  }
+
+  // ---------------- Parse incoming ESP32 data ----------------
+  // Expected format (comma separated): kickCount,speed,muscleStatus,movementStatus,crampRisk
+  // Example packet: "42,1.8,Normal,Active,Low"
+  function handleIncomingData(event) {
+    const decoder = new TextDecoder('utf-8');
+    const raw = decoder.decode(event.target.value).trim();
+    if (!raw) return;
+
+    const parts = raw.split(',');
+    if (parts.length >= 1) state.kickCount = parseInt(parts[0]) || state.kickCount;
+    if (parts.length >= 2) state.speed = parseFloat(parts[1]) || state.speed;
+    if (parts.length >= 3) state.muscleStatus = parts[2];
+    if (parts.length >= 4) state.moveStatus = parts[3];
+    if (parts.length >= 5) state.crampRisk = parts[4];
+
+    updateUI();
+  }
+
+  function updateUI() {
+    document.getElementById('kickCountHome').innerHTML = state.kickCount + '<span>kicks</span>';
+    document.getElementById('perfKick').textContent = state.kickCount;
+    document.getElementById('perfSpeed').innerHTML = state.speed.toFixed(1) + '<span class="metric-unit">m/s</span>';
+
+    document.getElementById('muscleStatus').textContent = state.muscleStatus;
+    document.getElementById('moveStatus').textContent = state.moveStatus;
+    document.getElementById('crampStatus').textContent = state.crampRisk;
+
+    setPill('musclePill', state.muscleStatus === 'Normal' ? 'ok' : 'warn', state.muscleStatus === 'Normal' ? 'Stable' : 'Fatigued');
+    setPill('movePill', state.moveStatus === 'Active' ? 'ok' : 'warn', state.moveStatus === 'Active' ? 'Normal Stroke' : 'Irregular');
+
+    const crampLevel = state.crampRisk.toLowerCase();
+    const crampCard = document.getElementById('crampCard');
+    crampCard.classList.remove('warn', 'danger');
+
+    if (crampLevel === 'high') {
+      setPill('crampPill', 'danger', 'Action Needed');
+      crampCard.classList.add('danger');
+      showToast('⚠ High cramp risk detected', 4000);
+    } else if (crampLevel === 'medium') {
+      setPill('crampPill', 'warn', 'Monitor');
+      crampCard.classList.add('warn');
+    } else {
+      setPill('crampPill', 'ok', 'Safe');
+    }
+  }
+
+  function setPill(id, cls, label) {
+    const el = document.getElementById(id);
+    el.className = 'pill ' + cls;
+    el.textContent = label;
+  }
+
+  // ---------------- Training time ticker ----------------
+  setInterval(() => {
+    if (state.connected && state.trainingStart) {
+      const secs = Math.floor((Date.now() - state.trainingStart) / 1000);
+      const m = String(Math.floor(secs / 60)).padStart(2, '0');
+      const s = String(secs % 60).padStart(2, '0');
+      document.getElementById('perfTime').textContent = `${m}:${s}`;
+    }
+  }, 1000);
+
+  // ---------------- SOS / Call Coach ----------------
+  const COACH_KEY = 'tritonCoachNumber';
+
+  function updateSosNote() {
+    const num = localStorage.getItem(COACH_KEY);
+    document.getElementById('sosNote').textContent = num
+      ? `Will call: ${num} — tap again to change`
+      : 'Coach number not set — tap to configure on first use.';
+  }
+  updateSosNote();
+
+  document.getElementById('callCoachBtn').addEventListener('click', () => {
+    let num = localStorage.getItem(COACH_KEY);
+    if (!num) {
+      num = prompt('Enter coach phone number:');
+      if (num) localStorage.setItem(COACH_KEY, num);
+    }
+    if (num) {
+      window.location.href = 'tel:' + num;
+    }
+    updateSosNote();
+  });
+
+</script>
+</body>
+</html>

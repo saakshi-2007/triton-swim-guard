@@ -1,0 +1,10 @@
+{
+  "name": "Triton Swim-Guard",
+  "short_name": "Swim-Guard",
+  "description": "Wearable swim performance and safety monitor",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0B3D42",
+  "theme_color": "#0B3D42",
+  "orientation": "portrait"
+}
